@@ -119,22 +119,22 @@
     # groups of words corresponding to each possible wordle answer for spook:
 
     >>> wd.print_groups('spook')
-    gggng: shook
-    nygng: showy
-    yygng: smoky
-    ngggg: spoof
+    gnggg: shook
+    gngnn: showy
+    gngny: smoky
+    ggggn: spoof
     ggggg: spook
-    nggyg: swoop
+    gyggn: swoop
 
     # yes, spook is our optimal guess: if it's right, great, if not, it's result
     # will tell us the answer. Compare to a less-optimal choice, spoof:
 
     >>> wd.print_groups('spoof')
-    nggng: shook
-    nygng: showy smoky
+    gnggn: shook
+    gngnn: showy smoky
     ggggg: spoof
-    ngggg: spook
-    nggyg: swoop
+    ggggn: spook
+    gyggn: swoop
 
     # Like spook it has a 1/6 chance of being right. But if it's wrong, there is
     # a 2-in-5 chance of the next guess being 50/50, taking us to 5 guesses
