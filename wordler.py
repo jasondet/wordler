@@ -1,4 +1,4 @@
-emport numpy as np
+import numpy as np
 import urllib.request
 from bs4 import BeautifulSoup
 
