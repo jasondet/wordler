@@ -1,4 +1,4 @@
-import numpy as np
+emport numpy as np
 import urllib.request
 from bs4 import BeautifulSoup
 
@@ -111,7 +111,7 @@ class Wordler:
     >>> wd.print_top_entropies('pinch')
     2.4494
 
-    # Okay, clint looks good (as it often does)
+    # Okay, clint looks good (often true)
 
     >>> wd.enter_result('clint', 'nnnnn')
     shook  1.5607
@@ -126,22 +126,22 @@ class Wordler:
     # groups of words corresponding to each possible wordle answer for spook:
 
     >>> wd.print_groups('spook')
-    gggng: shook
-    nygng: showy
-    yygng: smoky
-    ngggg: spoof
+    gnggg: shook
+    gngnn: showy
+    gngny: smoky
+    ggggn: spoof
     ggggg: spook
-    nggyg: swoop
+    gyggn: swoop
 
     # yes, spook is our optimal guess: if it's right, great, if not, it's result
     # will tell us the answer. Compare to a less-optimal choice, spoof:
 
     >>> wd.print_groups('spoof')
-    nggng: shook
-    nygng: showy smoky
+    gnggn: shook
+    gngnn: showy smoky
     ggggg: spoof
-    ngggg: spook
-    nggyg: swoop
+    ggggn: spook
+    gyggn: swoop
 
     # Like spook it has a 1/6 chance of being right. But if it's wrong, there is
     # a 2-in-5 chance of the next guess being 50/50, taking us to 5 guesses
@@ -153,7 +153,7 @@ class Wordler:
     def __init__(self):
         self.reload_words()
 
-    def reload_words(self, remove_used=False):
+    def reload_words(self, remove_used=True):
         ''' Reload the official wordle word list.
 
         Parameters
@@ -173,11 +173,11 @@ class Wordler:
         used_words = html.body.find('div', attrs={'id':'blist'}).text
         used_words = used_words.replace('\n', ' ')[1:-1].lower().split(' ')
         selected_words = []
-        for word in all_words:
+        for word in self.words:
             if word not in used_words: selected_words.append(word)
         self.words = np.array(selected_words)
 
-    def find_matches(self, guess, word):
+    def find_matches(self, guess, word, as_int=True):
         ''' Compute the wordle pattern for guess w.r.t. word
 
         Parameters
@@ -191,21 +191,44 @@ class Wordler:
 
         Returns
         -------
-        pattern : int
-            A 5-digit integer, where each digit corresponds to the character
-            matches: 0 = skipped, 1 = grey, 2 = yellow, 3 = green
+        pattern : str or int
+            If as_int = True, pattern is a <=5-digit integer, where each digit
+            corresponds to the character matches: 0 = skipped, 1 = grey, 2 =
+            yellow, 3 = green
+            If as_int = False, pattern is a string with 'n' = grey, 'y' =
+            yellow, 'g' = green
+        as_int : bool
+            Flag to determine type of returned pattern
         '''
 
-        pattern = 0
+        pattern = ''
         for ii, letter in enumerate(guess):
-            if letter == '.': continue
+            if letter == '.': 
+                pattern += '.'
+                continue
             if word[ii] == letter:
-                 pattern += 3 * 10**ii
-                 continue
+                pattern += 'g'
+                continue
             if letter in word: 
-                 pattern += 2 * 10**ii
-                 continue
-            pattern += 10**ii
+                count = 0
+                for jj, ll in enumerate(guess):
+                    if ll == letter:
+                        if word[jj] == ll: continue
+                        count += 1
+                    if jj == ii: break
+                # count is now the minimum number of misplaced occurrences of
+                # "letter" that must be found for a yellow assignment
+                for jj, ll in enumerate(word):
+                    if ll == letter:
+                        if guess[jj] == ll: continue
+                        count -= 1
+                if count <= 0:
+                    pattern += 'y'
+                    continue
+            pattern += 'n'
+        if as_int:
+            mapping = {'.':'0', 'n':'1', 'y':'2', 'g':'3'} 
+            return int(''.join(map(lambda cc: mapping[cc], pattern)))
         return pattern
 
     def compute_entropy(self, guess):
@@ -339,22 +362,10 @@ class Wordler:
             g, or y in each position, where n = grey (not in word), y = yellow,
             g = green
         '''
-        idx = np.ones(len(self.words), dtype=int)
-        for ii in range(5):
-            letter = guess[ii]
-            for jj in range(len(self.words)):
-                if result[ii] == 'g':
-                    if self.words[jj][ii] != letter: idx[jj] = 0
-                elif result[ii] == 'y':
-                    if letter not in self.words[jj] or self.words[jj][ii] == letter: idx[jj] = 0
-                else: # result[ii] == 'n':
-                    if letter in self.words[jj]: 
-                        # this one can't be green (already checked)
-                        # but check if all other occurrences are already green
-                        for kk in range(5):
-                            if self.words[jj][kk] == letter and result[kk] != 'g':
-                                idx[jj] = 0
-                                break
+        idx = np.zeros(len(self.words), dtype=int)
+        for jj, word in enumerate(self.words):
+            if self.find_matches(guess, word, False) == result:
+                idx[jj] = 1
         self.words = self.words[np.where(idx)]
         if ncols is not None: self.print_words(ncols)
 
